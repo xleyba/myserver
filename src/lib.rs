@@ -8,6 +8,7 @@ pub struct ThreadPool {
     sender: mpsc::Sender<Message>,
 }
 
+// Job is a type alias for a trait object that holds the type of closure that execute receives.
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 enum Message {
@@ -28,11 +29,16 @@ impl ThreadPool {
 
         let (sender, receiver) = mpsc::channel();
 
+        // as Rust channels are base on multiple sender and one receiver
+        // our receiver shall be shared among our threads so we use Arc for
+        // thread safe sharing and mutex for proper lock as it should be
+        // mutable
         let receiver = Arc::new(Mutex::new(receiver));
 
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
+            // receiver reference is cloned for each worker.
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
